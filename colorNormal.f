@@ -4,7 +4,6 @@
 
 uniform vec3 vectorToLight;	//dirction to the light (directional light) in world space
 uniform vec3 sceneAmbient;
-uniform float alpha;
 
 
 
@@ -13,7 +12,7 @@ in vec3 fragmentColor;
 
 
 
-layout(location = 0) out vec4 finalColor;
+layout(location = 0) out vec3 finalColor;
 
 
 
@@ -26,7 +25,5 @@ void main() {
 	nDotL is 0 if a vector to the light points away from the normal
 	*/
     float nDotL = max(0.0, dot(normalize(fragmentNormal), vectorToLight));
-    finalColor = vec4(
-		sceneAmbient * fragmentColor  +  nDotL * fragmentColor,
-		alpha);
+    finalColor = sceneAmbient * fragmentColor  +  nDotL * fragmentColor;
 }
