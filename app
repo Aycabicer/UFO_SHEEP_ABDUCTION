@@ -3,7 +3,10 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$ROOT_DIR/build"
-EXE_PATH="$BUILD_DIR/UFO_Sheep_Abduction.exe"
+EXE_PATH="$ROOT_DIR/app.exe"
+
+# Prefer MSYS2 UCRT64 toolchain when available.
+export PATH="/ucrt64/bin:/mingw64/bin:$PATH"
 
 if command -v g++ >/dev/null 2>&1; then
     CXX="g++"
@@ -38,6 +41,8 @@ mkdir -p "$BUILD_DIR"
     -o "$EXE_PATH" \
     $GLEW_LIBS $GLFW_LIBS -lopengl32 -lgdi32 -luser32 -lkernel32
 
+echo "Built: $EXE_PATH"
+
 cp -f "$ROOT_DIR/glew32.dll" "$BUILD_DIR/" 2>/dev/null || true
 cp -f "$ROOT_DIR/glfw3.dll" "$BUILD_DIR/" 2>/dev/null || true
 
@@ -45,11 +50,10 @@ cp -f "$ROOT_DIR/glfw3.dll" "$BUILD_DIR/" 2>/dev/null || true
 cp -f "$ROOT_DIR/colorNormal.v" "$BUILD_DIR/" 2>/dev/null || true
 cp -f "$ROOT_DIR/colorNormal.f" "$BUILD_DIR/" 2>/dev/null || true
 cp -f "$ROOT_DIR/vshader.glsl" "$BUILD_DIR/" 2>/dev/null || true
-cp -f "$ROOT_DIR/cone.obj" "$BUILD_DIR/" 2>/dev/null || true
-cp -f "$ROOT_DIR/Ground/terrain.obj" "$BUILD_DIR/terrain.obj" 2>/dev/null || true
-cp -f "$ROOT_DIR/Sheep/sheep.obj" "$BUILD_DIR/sheep.obj" 2>/dev/null || true
-cp -f "$ROOT_DIR/UFO/ufo.obj" "$BUILD_DIR/ufo.obj" 2>/dev/null || true
-cp -f "$ROOT_DIR/Scene/tree1.obj" "$BUILD_DIR/tree1.obj" 2>/dev/null || true
+cp -f "$ROOT_DIR/terrain.obj" "$BUILD_DIR/terrain.obj" 2>/dev/null || true
+cp -f "$ROOT_DIR/sheep.obj" "$BUILD_DIR/sheep.obj" 2>/dev/null || true
+cp -f "$ROOT_DIR/ufo.obj" "$BUILD_DIR/ufo.obj" 2>/dev/null || true
+cp -f "$ROOT_DIR/tree1.obj" "$BUILD_DIR/tree1.obj" 2>/dev/null || true
 
 cd "$BUILD_DIR"
 exec "$EXE_PATH"
