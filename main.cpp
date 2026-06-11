@@ -27,6 +27,10 @@
 using std::cerr, std::cout;
 
 
+/*
+g++ -std=c++17 main.cpp Model/OBJFile.cpp Model/ColoredMesh.cpp -o app_mac -I. -IModel -IShader -Iglm -I/opt/homebrew/include -L/opt/homebrew/lib -lglfw -lGLEW -framework OpenGL && ./app_mac
+*/
+
 
 enum class UfoState {
     MOVING,
@@ -45,6 +49,10 @@ UfoState ufoState = UfoState::MOVING;
 float beamScaleYStep = 2.0f;        //3 units per second
 float closestSheepDistanceXZ = INF; ///we only check distances to sheep on the xz plane
 float closesSheepDistanceY = INF;
+
+
+
+
 
 //for each position and scale we have to add appropriate 3d mesh in meshes (defined in main)
 std::vector<glm::vec3> positions{
@@ -91,9 +99,11 @@ void keyCallback(GLFWwindow* window,  int key,  int scancode,  int action,  int 
     else if (key == GLFW_KEY_RIGHT)
         cameraYRadians = std::min(1.0f, cameraYRadians + 0.1f);
     else if (ufoState == UfoState::MOVING) {
+
+
         if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
             ufoVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
-            std::size_t const BEAM_ID = positions.size() - 1; // beam is always last
+            std::size_t const BEAM_ID =positions.size() - 1; //beam is always last
             scale[BEAM_ID].y = 0.0f;
             closestSheepDistanceXZ = INF;
             closesSheepDistanceY = INF;
@@ -216,6 +226,11 @@ int main() {
             throw std::runtime_error{ "glewInit falied" };
         }
 
+        
+    
+
+
+
         GLint glMajor;
         glGetIntegerv(GL_MAJOR_VERSION, &glMajor);
         if (glMajor < 3) {
@@ -224,6 +239,7 @@ int main() {
             throw std::runtime_error{"glMajor < 3"};
         }
 
+        //Delta time /Frame-indep.
         TextFile vertexSource{"colorNormal.v"};
         TextFile fragmentSource{ "colorNormal.f" };
         VertexShader vertexShader(vertexSource);
@@ -239,6 +255,8 @@ int main() {
         ColoredMesh ufoMesh{ ufo };
         OBJFile cone = OBJFile::fromDisk("cone.obj");
         ColoredMesh coneMesh{cone};
+        OBJFile moon = OBJFile::fromDisk("moon.obj");
+        ColoredMesh moonMesh{ moon };
         
         std::vector<ColoredMesh*> meshes{&ufoMesh, &terrainMesh, &tree1Mesh, &tree1Mesh,
             &sheepMesh, &sheepMesh, &sheepMesh, &coneMesh};
@@ -286,24 +304,117 @@ int main() {
             glfwGetFramebufferSize(window, &width, &height);
             glViewport(0, 0, width, height);
 
-            glClearColor(background, background, background, 1.0f);
+            //glClearColor(background, background, background, 1.0f);
+            glClearColor(0.02f, 0.02f, 0.15f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  //clear color and depth
+
+
+
+
 
             float const ASPECT = width / (float)height;
             glm::mat4 const PROJ_MATRIX = glm::perspective(glm::radians(45.0f), ASPECT, 0.1f, 100.0f);
             //dirction to the light (directional light) in world space
-            glm::vec3 const TO_LIGHT_DIR = glm::normalize(glm::vec3(0.0f, 0.25f, 1.0f)); 
-            glm::vec3 const AMBIENT = glm::vec3(0.05f, 0.05f, 0.05f);
+            //glm::vec3 const TO_LIGHT_DIR = glm::normalize(glm::vec3(0.0f, 0.25f, 1.0f)); 
+            //glm::vec3 moonPos = glm::vec3(5.0f * sin(cameraYRadians + 1.5f), 8.0f, 5.0f * cos(cameraYRadians + 1.5f));
+            //glm::vec3 moonPos = glm::vec3(8.0f, 6.0f, -8.0f);
+            glm::vec3 moonPos = glm::vec3(8.0f, 3.0f, -8.0f);
+            glm::vec3 const TO_LIGHT_DIR = glm::normalize(moonPos);
+            //glm::vec3 const AMBIENT = glm::vec3(0.05f, 0.05f, 0.05f);
+            glm::vec3 const AMBIENT = glm::vec3(0.3f, 0.3f, 0.4f);
             float const UFO_ROT_RADIANS = CURRENT_SECONDS;  // 1 radian per second
             glm::vec3 const CAMERA_POS(12.0f * sin(cameraYRadians),  6.0f,  12.0f * cos(cameraYRadians));
             glm::vec3 const CAMERA_TARGET(0.0f, 0.0f, 0.0f);
+            //beam ufoya kitli
             glm::vec3 const CAMERA_UP(0.0f, 1.0f, 0.0f);
             glm::mat4 const VIEW_MATRIX = glm::lookAt(CAMERA_POS, CAMERA_TARGET, CAMERA_UP);
 
             //we display all opaque objects first
             shaderProgram.use();
+
+
+// Yıldızlar
+            srand(42);
+            glUniform3fv(ambientLoc, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 1.0f)));
+            glUniform3fv(lightDirLoc, 1, glm::value_ptr(glm::vec3(0.0f, 1.0f, 0.0f)));
+            glUniform1f(alphaLoc, 1.0f);
+            glDisable(GL_DEPTH_TEST);
+            moonMesh.use();
+            for (int s = 0; s < 150; s++) {
+                float angle = ((float)(rand() % 628)) / 100.0f;
+                float elevAngle = ((float)(rand() % 80) + 5) * 3.14159f / 180.0f;
+
+                //matrix concatenation
+                float r = 12.0f;
+                float sx = CAMERA_POS.x + r * cos(elevAngle) * cos(angle);
+
+                float sy = CAMERA_POS.y + r * sin(elevAngle);
+
+                float sz = CAMERA_POS.z + r * cos(elevAngle) * sin(angle);
+                //Transpose inverse norm. matrix 
+                glm::mat4 starModel = glm::translate(glm::mat4(1.0f), glm::vec3(sx, sy, sz));
+                starModel = glm::scale(starModel, glm::vec3(0.04f));
+                glm::mat4 starMVP = PROJ_MATRIX * VIEW_MATRIX * starModel;
+                glm::mat3 starNormal = glm::mat3(1.0f);
+                glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, glm::value_ptr(starMVP));
+                glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(starNormal));
+                glDrawArrays(GL_TRIANGLES, 0, moonMesh.vertexCount);
+            }
+            glEnable(GL_DEPTH_TEST);
+            glUniform3fv(ambientLoc, 1, glm::value_ptr(AMBIENT));
+            glUniform3fv(lightDirLoc, 1, glm::value_ptr(TO_LIGHT_DIR));
+
+
+            // Ay çiz
+            glm::mat4 moonModel = glm::translate(glm::mat4(1.0f), moonPos);
+            moonModel = glm::scale(moonModel, glm::vec3(0.8f));
+            glm::mat4 moonMVP = PROJ_MATRIX * VIEW_MATRIX * moonModel;
+            glm::mat3 moonNormal = glm::mat3(1.0f);
+            glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, glm::value_ptr(moonMVP));
+            glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(moonNormal));
+            glUniform1f(alphaLoc, 1.0f);
+            glUniform3fv(ambientLoc, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.9f)));
+            glUniform3fv(lightDirLoc, 1, glm::value_ptr(glm::vec3(0.0f, 1.0f, 0.0f)));
+            moonMesh.use();
+            glDrawArrays(GL_TRIANGLES, 0, moonMesh.vertexCount);
+            glUniform3fv(ambientLoc, 1, glm::value_ptr(AMBIENT));
+            glUniform3fv(lightDirLoc, 1, glm::value_ptr(TO_LIGHT_DIR));
+
+
+
+
+
             glUniform3fv(lightDirLoc, 1, glm::value_ptr(TO_LIGHT_DIR));
             glUniform3fv(ambientLoc, 1, glm::value_ptr(AMBIENT));
+
+            // Gölge matrisi hesapla
+            //glm::vec3 lightPos = glm::vec3(5.0f, 10.0f, 5.0f);
+            //glm::vec3 lightPos = glm::vec3(0.0f, 0.25f, 1.0f);
+            //glm::vec3 lightPos = glm::vec3(0.0f, 8.0f, 3.0f);
+            //glm::vec3 lightPos = glm::vec3(0.0f, 20.0f, 10.0f);
+
+            //glm::vec3 lightPos = CAMERA_POS * 2.0f;
+            //lightPos.y = 20.0f;
+            /*glm::mat4 shadowMat = Tinv * Mpersp * T;
+            glm::vec3 lightPos = moonPos;
+            lightPos.y = 6.0f;
+            //glm::mat4 yOffset = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.3f, 0.0f));
+            glm::mat4 T = glm::translate(glm::mat4(1.0f), -lightPos);
+            glm::mat4 Mpersp = glm::mat4(1.0f);
+            Mpersp[1][3] = -1.0f / lightPos.y;
+            glm::mat4 Tinv = glm::translate(glm::mat4(1.0f), lightPos);
+            //glm::mat4 shadowMat = Tinv * Mpersp * T;
+            glm::mat4 shadowMat = yOffset * Tinv * Mpersp * T;*/
+            glm::vec3 lightPos = moonPos;
+            lightPos.y = 3.0f;
+            glm::mat4 T = glm::translate(glm::mat4(1.0f), -lightPos);
+            glm::mat4 Mpersp = glm::mat4(1.0f);
+            Mpersp[1][3] = -1.0f / lightPos.y;
+            glm::mat4 Tinv = glm::translate(glm::mat4(1.0f), lightPos);
+            glm::mat4 shadowMat = Tinv * Mpersp * T;
+
+
+
             for (std::size_t i = 0;  i < meshes.size();  ++i) {
                 std::size_t const BEAM_ID = positions.size() - 1;
                 if (BEAM_ID == i)
@@ -325,6 +436,40 @@ int main() {
                 glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, glm::value_ptr(mvpMatrix));
                 glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
                 glDrawArrays(GL_TRIANGLES, 0, meshes[i]->vertexCount);
+
+                // Gölge çiz
+                if (i >= 2 && i != BEAM_ID) {
+                    
+                    glm::vec3 objPos = positions[i];
+                    glm::vec3 shadowPos;
+
+                    if (ufoState == UfoState::SHEEP_UP && i == positions.size() - 2) {
+                        shadowPos = glm::vec3(positions[UFO_ID].x, objPos.y - 0.1f, positions[UFO_ID].z);
+                    } else {
+                        glm::vec3 toLight = glm::normalize(lightPos - objPos);
+                        glm::vec3 shadowOffset = glm::vec3(-toLight.x, 0.0f, -toLight.z) * 0.3f;
+                        shadowPos = glm::vec3(objPos.x + shadowOffset.x, objPos.y - 0.1f, objPos.z + shadowOffset.z);
+                    }
+
+                    glm::mat4 shadowModel = glm::translate(glm::mat4(1.0f), shadowPos);
+                    shadowModel = glm::scale(shadowModel, glm::vec3(scale[i].x, 0.01f, scale[i].z));
+
+
+                    glm::mat4 shadowMVP = PROJ_MATRIX * VIEW_MATRIX * shadowModel;
+                    glm::mat3 shadowNormal = glm::mat3(1.0f);
+                    glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, glm::value_ptr(shadowMVP));
+                    glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, glm::value_ptr(shadowNormal));
+                    glUniform1f(alphaLoc, 0.4f);
+                    glUniform3fv(lightDirLoc, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, 0.0f)));
+                    //glUniform3fv(ambientLoc, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, 0.0f)));
+                    glUniform3fv(ambientLoc, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, 0.0f)));
+                    //glDisable(GL_DEPTH_TEST);
+                    glDrawArrays(GL_TRIANGLES, 0, meshes[i]->vertexCount);
+                    //glEnable(GL_DEPTH_TEST);
+                    glUniform3fv(lightDirLoc, 1, glm::value_ptr(TO_LIGHT_DIR));
+                    glUniform3fv(ambientLoc, 1, glm::value_ptr(AMBIENT));
+                    glUniform1f(alphaLoc, alpha[i]);
+                }
             
                 if (BEAM_ID != i  &&  1.0f != alpha[i])
                     glEnable(GL_DEPTH_TEST);
